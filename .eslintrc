@@ -1,0 +1,14 @@
+{
+  "env": {
+    "browser": true
+  },
+  "extends": "airbnb",
+  "rules": {
+    "no-console": 0,
+    "object-curly-newline": 0
+  },
+  "plugins": [
+    "jest"
+  ],
+  "parser": "@babel/eslint-parser"
+}
