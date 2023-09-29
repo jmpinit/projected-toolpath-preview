@@ -99,6 +99,12 @@ function findChessboard(video, canvas) {
     return undefined;
   }
 
+  const canvasCtx = canvas.getContext('2d');
+  canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+  canvasCtx.fillStyle = 'green';
+  const points = chunk(corners.data32F, 2);
+  points.forEach(([x, y]) => canvasCtx.fillRect(x - 5, y - 5, 10, 10));
+
   // Free objects we don't need anymore
   frameMat.delete();
 
@@ -208,9 +214,82 @@ export default function CalibrationUI() {
   const [lowerLeftPos, setLowerLeftPos] = useState({ x: 102, y: 213 });
   const [lowerRightPos, setLowerRightPos] = useState({ x: 312, y: 213 });
 
+  useEffect(() => {
+    let moveInterval;
+    let currentMoveKey;
+
+    function handleKeydown(event) {
+      if (moveInterval) {
+        // We're already moving
+        return;
+      }
+
+      currentMoveKey = event.key;
+
+      const delta = { x: 0, y: 0 };
+
+      switch (event.key) {
+        case 'ArrowUp':
+        case 'w':
+          delta.y = -1;
+          break;
+        case 'ArrowDown':
+        case 's':
+          delta.y = 1;
+          break;
+        case 'ArrowLeft':
+        case 'a':
+          delta.x = -1;
+          break;
+        case 'ArrowRight':
+        case 'd':
+          delta.x = 1;
+          break;
+        default:
+          currentMoveKey = undefined;
+          return;
+      }
+
+      moveInterval = setInterval(() => {
+        axidraw.currentPosition()
+          .then((pos) => axidraw.moveTo(
+            pos.x + delta.x,
+            pos.y + delta.y,
+          ));
+      }, 100);
+    }
+
+    function handleKeyup(event) {
+      console.log('keyup', event.key);
+
+      if (currentMoveKey === undefined || event.key !== currentMoveKey) {
+        return;
+      }
+
+      currentMoveKey = undefined;
+      clearInterval(moveInterval);
+      moveInterval = undefined;
+    }
+
+    document.addEventListener('keydown', handleKeydown);
+    document.addEventListener('keyup', handleKeyup);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeydown);
+      document.removeEventListener('keyup', handleKeyup);
+
+      if (moveInterval) {
+        clearInterval(moveInterval);
+      }
+    };
+  });
+
   const handleClick = useCallback((event) => {
     if (!axidraw.connected) {
-      axidraw.connect().then(() => axidraw.penUp());
+      axidraw
+        .connect()
+        .then(() => axidraw.penUp())
+        .then(() => axidraw.setSpeed(2000 / 60));
     }
 
     if (machineHomography === undefined) {
