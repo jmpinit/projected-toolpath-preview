@@ -10,7 +10,7 @@
     "test": "node node_modules/jest/bin/jest.js tests"
   },
   "dependencies": {
-    "@techstark/opencv-js": "^4.7.0-release.1",
+    "@techstark/opencv-js": "https://github.com/jmpinit/opencv-js",
     "ebb-control": "^1.0.0",
     "gl-matrix": "^3.4.3",
     "prop-types": "^15.8.1",
