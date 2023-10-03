@@ -119,8 +119,6 @@ function MachineCalibrator({
         [0, bedDimensions.heightMM],
       ].map(([x, y]) => applyHomography(cncToCam, x, y));
 
-      console.log(bedCorners);
-
       ctx.strokeStyle = '#ff4444';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -201,36 +199,35 @@ function MachineCalibrator({
 
   const readyToMark = chessboardPoints !== undefined && cncConnected && cncPosition !== undefined;
 
-  // FIXME: just for testing!
-  useEffect(() => {
-    setTimeout(() => {
-      setPointPairs([
-        {
-          machine: [94, 48],
-          image: [662.80, 285.43],
-        },
-        {
-          machine: [304.50, 46.50],
-          image: [816.22, 270.23],
-        },
-        {
-          machine: [305.75, 177.25],
-          image: [824.31, 365.20],
-        },
-        {
-          machine: [95.75, 179.00],
-          image: [671.55, 377.51],
-        },
-      ]);
-    }, 2000);
-  }, []);
-
-  useEffect(() => {
-    if (pointPairs.length >= 4 && cameraToCNC === undefined) {
-      console.log('Computing homography')
-      computeHomography();
-    }
-  }, [pointPairs, cameraToCNC]);
+  // // FIXME: just for testing!
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     setPointPairs([
+  //       {
+  //         machine: [94, 48],
+  //         image: [662.80, 285.43],
+  //       },
+  //       {
+  //         machine: [304.50, 46.50],
+  //         image: [816.22, 270.23],
+  //       },
+  //       {
+  //         machine: [305.75, 177.25],
+  //         image: [824.31, 365.20],
+  //       },
+  //       {
+  //         machine: [95.75, 179.00],
+  //         image: [671.55, 377.51],
+  //       },
+  //     ]);
+  //   }, 2000);
+  // }, []);
+  //
+  // useEffect(() => {
+  //   if (pointPairs.length >= 4 && cameraToCNC === undefined) {
+  //     computeHomography();
+  //   }
+  // }, [pointPairs, cameraToCNC]);
 
   return (
     <Row>
