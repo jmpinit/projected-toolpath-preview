@@ -1,6 +1,10 @@
 export default function calibrationReducer(state, action) {
   if (state === undefined) {
     return {
+      chessboard: {
+        rows: 6,
+        cols: 9,
+      },
       // https://github.com/thsant/3dmcap/blob/b9c5bb16e208c3e37f1ea6d5dc26c9304daf18cc/resources/Logitech-C920.yaml
       camera: {
         fx: 1394.6027293299926,
@@ -15,10 +19,20 @@ export default function calibrationReducer(state, action) {
           0.11274677130853494,
         ],
       },
+      cameraToCNC: undefined, // Found by MachineCalibrator
     };
   }
 
   switch (action.type) {
+    case 'CALIBRATION_CAM_TO_CNC':
+      if (action.payload.length !== 9) {
+        throw new Error('Expected a flat array representing a 3x3 matrix');
+      }
+
+      return {
+        ...state,
+        cameraToCNC: action.payload,
+      };
     default:
       return state;
   }

@@ -8,7 +8,7 @@ export function chunk(arr, size) {
   return result;
 }
 
-export function opencvMatToGlMat(cvMat) {
+export function openCVMatToGLMat(cvMat) {
   if (cvMat.data64F.length !== 9) {
     throw new Error('cvMat.data32F.length must be 9');
   }

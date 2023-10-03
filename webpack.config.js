@@ -6,6 +6,7 @@ const HtmlWebpackInlineSourcePlugin = require('@effortlessmotion/html-webpack-in
 module.exports = {
   mode: 'development',
   entry: './src/index.jsx',
+  devtool: 'source-map',
   output: {
     filename: 'build.js',
     path: path.resolve(__dirname, 'dist'),

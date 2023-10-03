@@ -102,6 +102,7 @@ export class AxiDraw {
     }
 
     await this.ebb.connect();
+    await this.ebb.reset();
     this.connected = true;
   }
 

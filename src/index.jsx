@@ -2,12 +2,16 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createGlobalStyle } from 'styled-components';
 import { Provider } from 'react-redux';
-import { createStore } from 'redux';
+import { applyMiddleware, createStore } from 'redux';
 
-import App from './App';
 import rootReducer from './reducers';
+import createAxiDrawMiddleware from './middleware/axidraw-middleware';
+import App from './App';
 
-const store = createStore(rootReducer);
+const store = createStore(
+  rootReducer,
+  applyMiddleware(createAxiDrawMiddleware()),
+);
 
 const GlobalStyle = createGlobalStyle`
   html, body {
