@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
-import { vec3 } from 'gl-matrix';
 
 import MachineJogControl from './MachineJogControl';
 import AnnotatedVideo from './AnnotatedVideo';
-import { findChessboard } from '../cv';
-import { chunk, openCVMatToGLMat } from '../util';
+import { applyHomography, findChessboard } from '../cv';
+import { chunk } from '../util';
 import MatrixTable from './MatrixTable';
 
 const Row = styled.div`
@@ -38,25 +37,11 @@ function chessboardOuterCorners(cornersMat, rows, cols) {
   ];
 }
 
-function applyHomography(homography, x, y) {
-  // const glMat = openCVMatToGLMat(homography);
-  // const mousePos = vec3.fromValues(x, y, 1); // z is 1 bc these are homogeneous coordinates
-  // const machinePos = vec3.transformMat3(vec3.create(), mousePos, glMat);
-
-  // z is 1 bc these are homogeneous coordinates
-  const inPos = cv.matFromArray(3, 1, cv.CV_32F, [x, y, 1]);
-  const outPos = new cv.Mat();
-  cv.gemm(homography, inPos, 1.0, new cv.Mat(), 0.0, outPos, 0);
-
-  const [wx, wy, w] = outPos.data32F;
-
-  return [wx / w, wy / w];
-}
-
 function MachineCalibrator({
   cncConnected,
   cncAtHome,
   cncPosition,
+  toolpath,
   bedDimensions,
   chessboardRows,
   chessboardCols,
@@ -76,37 +61,37 @@ function MachineCalibrator({
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    if (chessboardPoints === undefined) {
-      return;
+    if (chessboardPoints !== undefined) {
+      const gridCorners = chessboardOuterCorners(chessboardPoints, chessboardRows, chessboardCols);
+
+      // Highlight the 4 grid corner points
+      const radius = 4;
+      ctx.fillStyle = '#44ff44';
+      gridCorners.forEach(([x, y]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+
+      // Mark an X for the next corner the user should navigate to
+      if (nextCornerIndex < gridCorners.length) {
+        const [x, y] = gridCorners[nextCornerIndex];
+
+        const markSize = 10;
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - markSize, y - markSize);
+        ctx.lineTo(x + markSize, y + markSize);
+        ctx.moveTo(x - markSize, y + markSize);
+        ctx.lineTo(x + markSize, y - markSize);
+        ctx.stroke();
+      }
     }
 
-    const gridCorners = chessboardOuterCorners(chessboardPoints, chessboardRows, chessboardCols);
-
-    // Highlight the 4 grid corner points
-    const radius = 4;
-    ctx.fillStyle = '#44ff44';
-    gridCorners.forEach(([x, y]) => {
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-
-    // Mark an X for the next corner the user should navigate to
-    if (nextCornerIndex < gridCorners.length) {
-      const [x, y] = gridCorners[nextCornerIndex];
-
-      const markSize = 10;
-      ctx.strokeStyle = '#ff4444';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x - markSize, y - markSize);
-      ctx.lineTo(x + markSize, y + markSize);
-      ctx.moveTo(x - markSize, y + markSize);
-      ctx.lineTo(x + markSize, y - markSize);
-      ctx.stroke();
-    }
-
-    // Render a border around the CNC bed if we have a valid homography
+    // If we have a valid homography, then
+    // render a border around the CNC bed
+    // and render the toolpath if we have one
     if (cameraToCNC !== undefined) {
       const camToCNCMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToCNC);
       const cncToCam = new cv.Mat();
@@ -128,8 +113,29 @@ function MachineCalibrator({
       });
       ctx.lineTo(bedCorners[0][0], bedCorners[0][1]);
       ctx.stroke();
+
+      if (toolpath !== undefined) {
+        const toolpathInCam = toolpath
+          .map((path) => path
+            .map(({ x, y }) => {
+              // Flip the Y axis because the CNC's Y axis is flipped
+              const ny = 235 - y;
+              const nx = x;
+              return { x: nx, y: ny };
+            })
+            .map(({ x, y }) => applyHomography(cncToCam, x, y)));
+
+        ctx.strokeStyle = '#4444ff';
+        ctx.lineWidth = 2;
+        toolpathInCam.forEach((path) => {
+          ctx.beginPath();
+          ctx.moveTo(path[0][0], path[0][1]);
+          path.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
+          ctx.stroke();
+        });
+      }
     }
-  }, [setVideoEl, chessboardPoints, cameraToCNC]);
+  }, [setVideoEl, chessboardPoints, cameraToCNC, nextCornerIndex]);
 
   // When the CNC is at its home position look for the chessboard every so often
   // Don't look for the chessboard when the CNC is not at home to avoid jank
@@ -151,8 +157,8 @@ function MachineCalibrator({
     return () => clearInterval(interval);
   }, [cncAtHome, videoEl, setChessboardPoints]);
 
-  const computeHomography = useCallback(() => {
-    const [machinePoints, imagePoints] = pointPairs.reduce((acc, { machine, image }) => {
+  const computeHomography = useCallback((currentPointPairs) => {
+    const [machinePoints, imagePoints] = currentPointPairs.reduce((acc, { machine, image }) => {
       acc[0].push(...machine);
       acc[1].push(...image);
       return acc;
@@ -160,18 +166,21 @@ function MachineCalibrator({
 
     // Figured out the data formats via
     // https://stackoverflow.com/a/63695553
-    const machinePointsMat = cv.matFromArray(pointPairs.length, 2, cv.CV_32F, machinePoints);
-    const imagePointsMat = cv.matFromArray(pointPairs.length, 2, cv.CV_32F, imagePoints);
+    const machinePointsMat = cv.matFromArray(currentPointPairs.length, 2, cv.CV_32F, machinePoints);
+    const imagePointsMat = cv.matFromArray(currentPointPairs.length, 2, cv.CV_32F, imagePoints);
     const imageToMachine = cv.findHomography(imagePointsMat, machinePointsMat); // CV_64F
+
+    console.log('imageToMachine', imageToMachine.data64F);
 
     dispatch({
       type: 'CALIBRATION_CAM_TO_CNC',
       payload: Array.from(imageToMachine.data64F),
     });
-  }, [pointPairs, dispatch]);
+  }, [dispatch]);
 
   const handleMachineAtPoint = useCallback(() => {
     const { x: cncX, y: cncY } = cncPosition;
+
     const gridCorners = chessboardOuterCorners(chessboardPoints, chessboardRows, chessboardCols);
     const [x, y] = gridCorners[nextCornerIndex];
 
@@ -183,9 +192,9 @@ function MachineCalibrator({
 
     setNextCornerIndex(nextCornerIndex === 3 ? 0 : nextCornerIndex + 1);
 
-    if (pointPairs.length >= 4) {
+    if (newPointPairs.length >= 4) {
       // We have enough points to compute the homography
-      computeHomography();
+      computeHomography(newPointPairs);
     }
   }, [
     chessboardPoints,
@@ -197,9 +206,15 @@ function MachineCalibrator({
     dispatch,
   ]);
 
+  // FIXME: hacked for playing around at HH
+  window.cncAtPosition = (x, y) => {
+    // console.log(`Manually setting the CNC position to (${x}, ${y})`);
+    dispatch({ type: 'CNC_MOVED', payload: { x, y } });
+  };
+
   const readyToMark = chessboardPoints !== undefined && cncConnected && cncPosition !== undefined;
 
-  // // FIXME: just for testing!
+  // FIXME: just for testing!
   // useEffect(() => {
   //   setTimeout(() => {
   //     setPointPairs([
@@ -224,7 +239,7 @@ function MachineCalibrator({
   // }, []);
   //
   // useEffect(() => {
-  //   if (pointPairs.length >= 4 && cameraToCNC === undefined) {
+  //   if (pointPairs.length >= 4) {
   //     computeHomography();
   //   }
   // }, [pointPairs, cameraToCNC]);
@@ -269,6 +284,7 @@ function mapStateToProps(state) {
     cncConnected: state.cnc.connected,
     cncAtHome: state.cnc.atHome,
     cncPosition: state.cnc.lastCommandedPos,
+    toolpath: state.cnc.toolpath,
     bedDimensions: state.cnc.bedDimensions,
     chessboardRows: state.calibration.chessboard.rows,
     chessboardCols: state.calibration.chessboard.cols,

@@ -7,10 +7,14 @@ import { applyMiddleware, createStore } from 'redux';
 import rootReducer from './reducers';
 import createAxiDrawMiddleware from './middleware/axidraw-middleware';
 import App from './App';
+import createBroadcastMiddleware from './middleware/broadcast-middleware';
 
 const store = createStore(
   rootReducer,
-  applyMiddleware(createAxiDrawMiddleware()),
+  applyMiddleware(
+    createBroadcastMiddleware(),
+    createAxiDrawMiddleware(),
+  ),
 );
 
 const GlobalStyle = createGlobalStyle`

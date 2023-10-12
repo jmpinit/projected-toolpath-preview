@@ -18,7 +18,7 @@ const AbsVideo = styled.video`
   grid-row: 1;
 `;
 
-export default function AnnotatedVideo({ onUpdate, showVideo }) {
+export default function AnnotatedVideo({ onClick, onUpdate, showVideo }) {
   const videoRef = useRef();
   const canvasRef = useRef();
   const [hasCamAccess, setHasCamAccess] = useState(false);
@@ -53,7 +53,7 @@ export default function AnnotatedVideo({ onUpdate, showVideo }) {
   }, [hasCamAccess, onUpdate]);
 
   return (
-    <VideoContainer>
+    <VideoContainer onClick={onClick}>
       <AbsVideo ref={videoRef} hidden={showVideo} />
       <AbsCanvas ref={canvasRef} />
     </VideoContainer>
@@ -61,10 +61,12 @@ export default function AnnotatedVideo({ onUpdate, showVideo }) {
 }
 
 AnnotatedVideo.propTypes = {
+  onClick: PropTypes.func,
   onUpdate: PropTypes.func.isRequired,
   showVideo: PropTypes.bool,
 };
 
 AnnotatedVideo.defaultProps = {
+  onClick: () => {},
   showVideo: false,
 };

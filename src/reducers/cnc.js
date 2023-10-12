@@ -1,3 +1,5 @@
+import art from '../data/apriltag.json';
+
 export default function appReducer(state, action) {
   if (state === undefined) {
     return {
@@ -10,6 +12,9 @@ export default function appReducer(state, action) {
         widthMM: 430,
         heightMM: 297,
       },
+      toolpath: art,
+      annotation: [], // Annotations are added by the user in cam space
+      project: [], // Debug points in projector space
     };
   }
 
@@ -33,6 +38,22 @@ export default function appReducer(state, action) {
         ...state,
         atHome: x === 0 && y === 0,
         lastCommandedPos: { x, y },
+      };
+    }
+    case 'ANNOTATE': {
+      const { x, y } = action.payload;
+
+      return {
+        ...state,
+        annotation: [[x, y]],
+      };
+    }
+    case 'PROJECT': {
+      const points = action.payload;
+
+      return {
+        ...state,
+        project: points,
       };
     }
     default:

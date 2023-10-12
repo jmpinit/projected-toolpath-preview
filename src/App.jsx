@@ -3,12 +3,14 @@ import styled from 'styled-components';
 import { connect } from 'react-redux';
 import CameraCalibrator from './components/CameraCalibrator';
 import MachineCalibrator from './components/MachineCalibrator';
+import ProjectorCalibrator from './components/ProjectorCalibrator';
+import ProjectedToolpath from './components/ProjectedToolpath';
 
 const AppContainer = styled.div`
   display: flex;
 `;
 
-const TabNavigator = ({ children }) => {
+function TabNavigator({ children }) {
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
   const renderTabs = () => {
@@ -41,15 +43,18 @@ const TabNavigator = ({ children }) => {
   );
 };
 
-const Tab = ({ children }) => <>{children}</>;
+function Tab({ children }) {
+  return (<>{children}</>);
+}
 
 function App() {
   return (
     <AppContainer>
       <TabNavigator>
         <Tab tabName="Camera Calibration"><CameraCalibrator /></Tab>
-        <Tab tabName="Projector Calibration">TBD</Tab>
         <Tab tabName="Machine Calibration"><MachineCalibrator /></Tab>
+        <Tab tabName="Projector Calibration"><ProjectorCalibrator /></Tab>
+        <Tab tabName="Preview Toolpath"><ProjectedToolpath /></Tab>
       </TabNavigator>
     </AppContainer>
   );

@@ -165,3 +165,17 @@ export function calibrateCamera(imagePoints) {
     error: reprojectionError,
   };
 }
+
+export function applyHomography(homography, x, y) {
+  // z is 1 bc these are homogeneous coordinates
+  const inPos = cv.matFromArray(3, 1, cv.CV_32F, [x, y, 1]);
+  const outPos = new cv.Mat();
+  cv.gemm(homography, inPos, 1.0, new cv.Mat(), 0.0, outPos, 0);
+
+  const [wx, wy, w] = outPos.data32F;
+
+  inPos.delete();
+  outPos.delete();
+
+  return [wx / w, wy / w];
+}

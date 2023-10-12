@@ -7,16 +7,17 @@ export default function createAxiDrawMiddleware() {
     return (next) => (action) => {
       switch (action.type) {
         case 'CNC_CONNECT':
-          if (!axidraw.connected) {
-            axidraw
-              .connect()
-              .then(() => axidraw.setSpeed(2000 / 60))
-              .then(() => store.dispatch({ type: 'CNC_CONNECTED' }));
-          }
+          // if (!axidraw.connected) {
+          //   axidraw
+          //     .connect()
+          //     .then(() => axidraw.setSpeed(2000 / 60))
+          //     .then(() => store.dispatch({ type: 'CNC_CONNECTED' }));
+          // }
+          store.dispatch({ type: 'CNC_CONNECTED' });
           break;
         case 'CNC_MOVETO': {
           const { x, y } = action.payload;
-          axidraw.moveTo(x, y).then();
+          // axidraw.moveTo(x, y).then();
           store.dispatch({ type: 'CNC_MOVED', payload: { x, y } });
           break;
         }
