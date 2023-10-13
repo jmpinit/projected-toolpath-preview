@@ -53,8 +53,8 @@ function ProjectedChessboard({
     const points = renderChessboard(canvas, chessboardRows, chessboardCols);
 
     const { top, left } = canvas.getBoundingClientRect();
-    // const pointsRelativeToViewport = points.map(([x, y]) => [left + x, top + y]);
-    const pointsRelativeToViewport = points; // FIXME
+    const pointsRelativeToViewport = points.map(([x, y]) => [left + x, top + y]);
+    // const pointsRelativeToViewport = points; // FIXME
     console.log(`Chessboard offset on window is ${left}, ${top}`);
     console.log('Chessboard inner corners:', pointsRelativeToViewport);
 

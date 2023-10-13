@@ -78,7 +78,7 @@ function ProjectorCalibrator({ chessboardRows, chessboardCols, projectorPoints, 
           chessboardRows={chessboardRows}
         />
       )}
-      <button onClick={() => { detectChessboard() }}>Detect</button>
+      {!done && <button onClick={() => { detectChessboard() }}>Detect</button>}
       <video ref={videoRef} hidden />
       <canvas ref={canvasRef} hidden />
     </>

@@ -120,13 +120,13 @@ function ProjectedToolpath({ toolpath, annotation, project, cameraToCNC, cameraT
       }
     }
 
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 4;
-    annotation.forEach(([x, y]) => {
-      ctx.beginPath();
-      ctx.arc(x, y, 10, 0, 2 * Math.PI);
-      ctx.stroke();
-    });
+    // ctx.strokeStyle = '#ffffff';
+    // ctx.lineWidth = 4;
+    // annotation.forEach(([x, y]) => {
+    //   ctx.beginPath();
+    //   ctx.arc(x, y, 10, 0, 2 * Math.PI);
+    //   ctx.stroke();
+    // });
 
     // Draw projection points
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -138,11 +138,14 @@ function ProjectedToolpath({ toolpath, annotation, project, cameraToCNC, cameraT
       ctx.stroke();
     });
 
-    // annotation
-    //   .map(([x, y]) => camToProjector(cameraToProjector, x, y))
-    //   .forEach(([x, y]) => {
-    //     ctx.fillText(`${x.toFixed(0)}, ${y.toFixed(0)}`, x, y); // Adjust text position as needed
-    //   });
+    annotation
+      .map(([x, y]) => camToProjector(cameraToProjector, x, y))
+      .forEach(([x, y]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fillText(`${x.toFixed(0)}, ${y.toFixed(0)}`, x, y); // Adjust text position as needed
+      });
   }, [toolpath, annotation, project, cameraToCNC, cameraToProjector]);
 
   return (
