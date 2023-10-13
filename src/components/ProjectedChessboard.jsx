@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import ProjectedCanvas from './ProjectedCanvas';
 
@@ -42,7 +43,8 @@ function renderChessboard(canvas, rows, cols) {
   return points;
 }
 
-export default function ProjectedChessboard({
+function ProjectedChessboard({
+  dispatch,
   onFullscreen,
   chessboardRows,
   chessboardCols,
@@ -51,8 +53,8 @@ export default function ProjectedChessboard({
     const points = renderChessboard(canvas, chessboardRows, chessboardCols);
 
     const { top, left } = canvas.getBoundingClientRect();
-    // const pointsRelativeToViewport = points.map(([x, y]) => [left + x, top + y]);
-    const pointsRelativeToViewport = points; // FIXME
+    const pointsRelativeToViewport = points.map(([x, y]) => [left + x, top + y]);
+    // const pointsRelativeToViewport = points; // FIXME
     console.log(`Chessboard offset on window is ${left}, ${top}`);
     console.log('Chessboard inner corners:', pointsRelativeToViewport);
 
@@ -65,6 +67,11 @@ export default function ProjectedChessboard({
     //   ctx.arc(x, y, 15, 0, 2 * Math.PI);
     //   ctx.stroke();
     // });
+
+    dispatch({
+      type: 'CALIBRATION_PROJECTOR_POINTS',
+      payload: pointsRelativeToViewport,
+    });
 
     // HACK: trigger this from the fullscreen event somehow
     // (but make sure the new points are passed)
@@ -87,3 +94,5 @@ ProjectedChessboard.propTypes = {
 ProjectedChessboard.defaultProps = {
   onFullscreen: () => {},
 };
+
+export default connect()(ProjectedChessboard);
