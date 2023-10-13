@@ -5,6 +5,7 @@ export default function calibrationReducer(state, action) {
         rows: 6,
         cols: 9,
       },
+      projectorPoints: undefined,
       // https://github.com/thsant/3dmcap/blob/b9c5bb16e208c3e37f1ea6d5dc26c9304daf18cc/resources/Logitech-C920.yaml
       camera: {
         fx: 1394.6027293299926,
@@ -51,6 +52,11 @@ export default function calibrationReducer(state, action) {
       return {
         ...state,
         cameraToCNC: action.payload,
+      };
+    case 'CALIBRATION_PROJECTOR_POINTS':
+      return {
+        ...state,
+        projectorPoints: action.payload,
       };
     case 'CALIBRATION_CAM_TO_PROJECTOR':
       if (action.payload.length !== 9) {

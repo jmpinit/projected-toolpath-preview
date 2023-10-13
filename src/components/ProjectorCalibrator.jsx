@@ -2,13 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import ProjectedChessboard from './ProjectedChessboard';
-import { findChessboard } from '../cv';
+import { findChessboard, applyHomography } from '../cv';
 import requestCamAccess from '../cam';
 import { chunk } from '../util';
 
 let searchInterval; // HACK
 
-function ProjectorCalibrator({ chessboardRows, chessboardCols, dispatch }) {
+function ProjectorCalibrator({ chessboardRows, chessboardCols, projectorPoints, dispatch }) {
   const videoRef = useRef();
   const canvasRef = useRef();
   const [done, setDone] = useState(false);
@@ -20,9 +20,11 @@ function ProjectorCalibrator({ chessboardRows, chessboardCols, dispatch }) {
   }, []);
 
   const detectChessboard = useCallback((imagePoints) => {
+    console.log("detectChessboard", imagePoints, projectorPoints);
     if (searchInterval !== undefined) {
       clearInterval(searchInterval);
     }
+    imagePoints = imagePoints || projectorPoints;
 
     console.log('Looking for the chessboard...');
 
@@ -60,7 +62,7 @@ function ProjectorCalibrator({ chessboardRows, chessboardCols, dispatch }) {
       clearInterval(searchInterval);
       searchInterval = undefined;
     };
-  }, [setDone]);
+  }, [setDone, projectorPoints]);
 
   return (
     <>
@@ -76,6 +78,7 @@ function ProjectorCalibrator({ chessboardRows, chessboardCols, dispatch }) {
           chessboardRows={chessboardRows}
         />
       )}
+      <button onClick={() => { detectChessboard() }}>Detect</button>
       <video ref={videoRef} hidden />
       <canvas ref={canvasRef} hidden />
     </>
@@ -85,6 +88,7 @@ function ProjectorCalibrator({ chessboardRows, chessboardCols, dispatch }) {
 ProjectorCalibrator.propTypes = {
   chessboardCols: PropTypes.number.isRequired,
   chessboardRows: PropTypes.number.isRequired,
+  projectorPoints: PropTypes.array.isOptional,
   dispatch: PropTypes.func.isRequired,
 };
 
@@ -92,6 +96,7 @@ function mapStateToProps(state) {
   return {
     chessboardCols: state.calibration.chessboard.cols,
     chessboardRows: state.calibration.chessboard.rows,
+    projectorPoints: state.calibration.projectorPoints
   };
 }
 
