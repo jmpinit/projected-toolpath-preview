@@ -53,6 +53,7 @@ function MachineCalibrator({
   const [chessboardPoints, setChessboardPoints] = useState();
   const [nextCornerIndex, setNextCornerIndex] = useState(0);
 
+  // TODO: we only need to rerender these things when they change, not every frame
   const handleUpdate = useCallback((video, canvas) => {
     if (videoEl === undefined) {
       setVideoEl(video);
@@ -93,9 +94,10 @@ function MachineCalibrator({
     // render a border around the CNC bed
     // and render the toolpath if we have one
     if (cameraToCNC !== undefined) {
-      const camToCNCMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToCNC);
-      const cncToCam = new cv.Mat();
+      let camToCNCMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToCNC); // Deleted after use below
+      let cncToCam = new cv.Mat(); // Deleted after use in transforming points
       cv.invert(camToCNCMat, cncToCam);
+      camToCNCMat.delete(); camToCNCMat = undefined;
 
       const bedCorners = [
         [0, 0],
@@ -126,7 +128,7 @@ function MachineCalibrator({
             .map(({ x, y }) => applyHomography(cncToCam, x, y)));
 
         ctx.strokeStyle = '#4444ff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1;
         toolpathInCam.forEach((path) => {
           ctx.beginPath();
           ctx.moveTo(path[0][0], path[0][1]);
@@ -134,6 +136,8 @@ function MachineCalibrator({
           ctx.stroke();
         });
       }
+
+      cncToCam.delete(); cncToCam = undefined;
     }
   }, [setVideoEl, chessboardPoints, cameraToCNC, nextCornerIndex]);
 
@@ -145,17 +149,22 @@ function MachineCalibrator({
         return;
       }
 
+      // Deleted the next time we setChessboardPoints below
       const corners = findChessboard(videoEl);
 
       if (corners === undefined) {
         return;
       }
 
+      if (chessboardPoints !== undefined) {
+        chessboardPoints.delete();
+      }
+
       setChessboardPoints(corners);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [cncAtHome, videoEl, setChessboardPoints]);
+  }, [cncAtHome, videoEl, chessboardPoints, setChessboardPoints]);
 
   const computeHomography = useCallback((currentPointPairs) => {
     const [machinePoints, imagePoints] = currentPointPairs.reduce((acc, { machine, image }) => {
@@ -166,9 +175,14 @@ function MachineCalibrator({
 
     // Figured out the data formats via
     // https://stackoverflow.com/a/63695553
-    const machinePointsMat = cv.matFromArray(currentPointPairs.length, 2, cv.CV_32F, machinePoints);
-    const imagePointsMat = cv.matFromArray(currentPointPairs.length, 2, cv.CV_32F, imagePoints);
-    const imageToMachine = cv.findHomography(imagePointsMat, machinePointsMat); // CV_64F
+    // Deleted after use below
+    let machinePointsMat = cv.matFromArray(currentPointPairs.length, 2, cv.CV_32F, machinePoints);
+    // Deleted after use below
+    let imagePointsMat = cv.matFromArray(currentPointPairs.length, 2, cv.CV_32F, imagePoints);
+    // Deleted after use below
+    let imageToMachine = cv.findHomography(imagePointsMat, machinePointsMat); // CV_64F
+    machinePointsMat.delete(); machinePointsMat = undefined;
+    imagePointsMat.delete(); imagePointsMat = undefined;
 
     console.log('imageToMachine', imageToMachine.data64F);
 
@@ -176,6 +190,8 @@ function MachineCalibrator({
       type: 'CALIBRATION_CAM_TO_CNC',
       payload: Array.from(imageToMachine.data64F),
     });
+
+    imageToMachine.delete(); imageToMachine = undefined;
   }, [dispatch]);
 
   const handleMachineAtPoint = useCallback(() => {

@@ -39,13 +39,18 @@ function ProjectorCalibrator({ chessboardRows, chessboardCols, projectorPoints, 
       // FIXME: just for debugging
       window.camImagePts = chunk(camImagePts.data32F, 2);
 
-      const projImagePts = cv.matFromArray(imagePoints.length, 2, cv.CV_32F, imagePoints.flat());
-      const camToProjector = cv.findHomography(camImagePts, projImagePts); // CV_64F
+      // Deleted after use below
+      let projImagePts = cv.matFromArray(imagePoints.length, 2, cv.CV_32F, imagePoints.flat());
+      // Deleted after use below
+      let camToProjector = cv.findHomography(camImagePts, projImagePts); // CV_64F
+      projImagePts.delete(); projImagePts = undefined;
 
       dispatch({
         type: 'CALIBRATION_CAM_TO_PROJECTOR',
         payload: Array.from(camToProjector.data64F),
       });
+
+      camToProjector.delete(); camToProjector = undefined;
 
       // FIXME: just for debugging
       // dispatch({

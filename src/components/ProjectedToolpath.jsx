@@ -1,59 +1,35 @@
 import React, { useCallback } from 'react';
 import { connect } from 'react-redux';
-import PropTypes from 'prop-types';
 import { applyHomography } from '../cv';
 import ProjectedCanvas from './ProjectedCanvas';
 
-function drawUVQuickShade(canvas) {
-  const ctx = canvas.getContext('2d');
-  const { width, height } = canvas;
-  const cellSize = 100; // Set the size of each cell
-  const rows = Math.ceil(height / cellSize);
-  const cols = Math.ceil(width / cellSize);
-
-  // Draw color gradient
-  // for (let y = 0; y < height; y++) {
-  //   for (let x = 0; x < width; x++) {
-  //     const u = x / width;
-  //     const v = 1 - y / height; // Flip V so 0 is at the bottom
-  //     ctx.fillStyle = `rgb(${u * 255}, ${v * 255}, 127)`;
-  //     ctx.fillRect(x, y, 1, 1);
-  //   }
-  // }
-
-  // Draw grid and UV coordinates
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 1;
-  ctx.font = '12px Arial';
-  ctx.fillStyle = '#000000';
-
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const x = col * cellSize;
-      const y = row * cellSize;
-      const u = (x / width).toFixed(2);
-      const v = (1 - y / height).toFixed(2); // Flip V so 0 is at the bottom
-      ctx.strokeRect(x, y, cellSize, cellSize);
-      ctx.fillText(`U:${u}, V:${v}`, x + 5, y + 20); // Adjust text position as needed
-    }
-  }
-}
-
 function cncToProjector(cameraToCNC, cameraToProjector, x, y) {
   // FIXME: just cache the matrices multiplied together in the store
-  const cameraToCNCMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToCNC);
-  const cncToCam = new cv.Mat();
-  cv.invert(cameraToCNCMat, cncToCam);
 
-  const cameraToProjectorMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToProjector);
+  // Deleted after being used to create cncToCam
+  let cameraToCNCMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToCNC);
+  let cncToCam = new cv.Mat(); // Deleted after use in applyHomography
+  cv.invert(cameraToCNCMat, cncToCam);
+  cameraToCNCMat.delete(); cameraToCNCMat = undefined;
+
+  // Deleted after use in applyHomography
+  let cameraToProjectorMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToProjector);
 
   const camPos = applyHomography(cncToCam, x, y);
-  return applyHomography(cameraToProjectorMat, camPos[0], camPos[1]);
+  cncToCam.delete(); cncToCam = undefined;
+  const projPos = applyHomography(cameraToProjectorMat, camPos[0], camPos[1]);
+  cameraToProjectorMat.delete(); cameraToProjectorMat = undefined;
+
+  return projPos;
 }
 
 function camToProjector(cameraToProjector, x, y) {
-  const cameraToProjectorMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToProjector);
-  return applyHomography(cameraToProjectorMat, x, y);
+  // Deleted after use in applyHomography
+  let cameraToProjectorMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToProjector);
+  const projPos = applyHomography(cameraToProjectorMat, x, y);
+  cameraToProjectorMat.delete(); cameraToProjectorMat = undefined;
+
+  return projPos;
 }
 
 function ProjectedToolpath({ toolpath, annotation, project, cameraToCNC, cameraToProjector }) {
@@ -64,9 +40,11 @@ function ProjectedToolpath({ toolpath, annotation, project, cameraToCNC, cameraT
     // ctx.strokeStyle = '#ff0000';
     // ctx.lineWidth = 4;
 
-    // console.log(adjToolpath.map((path) => path.map(({ x, y }) => cncToProjector(cameraToCNC, cameraToProjector, x, y))));
+    // console.log(adjToolpath.map((path) =>
+    // path.map(({ x, y }) => cncToProjector(cameraToCNC, cameraToProjector, x, y))));
     // toolpath
-    //   .map((path) => path.map(({ x, y }) => cncToProjector(cameraToCNC, cameraToProjector, x, y)))
+    //   .map((path) => path.map(({ x, y }) =>
+    //   cncToProjector(cameraToCNC, cameraToProjector, x, y)))
     //   .forEach((path) => {
     //     ctx.beginPath();
     //     ctx.moveTo(path[0][0], path[0][1]);

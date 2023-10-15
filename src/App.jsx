@@ -5,9 +5,11 @@ import CameraCalibrator from './components/CameraCalibrator';
 import MachineCalibrator from './components/MachineCalibrator';
 import ProjectorCalibrator from './components/ProjectorCalibrator';
 import ProjectedToolpath from './components/ProjectedToolpath';
+import MemoryUsage from './components/MemoryUsage';
 
 const AppContainer = styled.div`
   display: flex;
+  flex-direction: column;
 `;
 
 function TabNavigator({ children }) {
@@ -50,6 +52,7 @@ function Tab({ children }) {
 function App() {
   return (
     <AppContainer>
+      <MemoryUsage />
       <TabNavigator>
         <Tab tabName="Camera Calibration"><CameraCalibrator /></Tab>
         <Tab tabName="Machine Calibration"><MachineCalibrator /></Tab>

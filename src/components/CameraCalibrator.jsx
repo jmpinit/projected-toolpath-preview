@@ -52,6 +52,7 @@ function CameraCalibrator({ dispatch }) {
   }, [videoEl, imagePoints, setImagePoints, setCalibration]);
 
   const calibrate = useCallback(() => {
+    // TODO: handle other chessboard sizes
     setCalibration(calibrateCamera(imagePoints));
   }, [imagePoints, setCalibration]);
 

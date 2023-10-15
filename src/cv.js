@@ -1,5 +1,6 @@
 import cvPromise from '@techstark/opencv-js';
 import { videoToCanvas } from './cam';
+import { mat3, vec3 } from 'gl-matrix';
 
 (async () => {
   console.log('Loading OpenCV...');
@@ -7,34 +8,71 @@ import { videoToCanvas } from './cam';
   console.log('OpenCV loaded');
 })();
 
-export function canvasToMat(canvas) {
-  if (cv === undefined) {
-    throw new Error('OpenCV not loaded');
+export function convertCvMatToMat3(cvMatData) {
+  if (cvMatData.length !== 9) {
+    throw new Error('Input matrix must be of size 3x3.');
   }
 
+  // Creating a mat3 for glMatrix and filling it with data.
+  // Assumes column-major ordering used by glMatrix.
+  const glMat = mat3.create();
+  for (let col = 0; col < 3; col += 1) {
+    for (let row = 0; row < 3; row += 1) {
+      glMat[col * 3 + row] = cvMatData[row * 3 + col];
+    }
+  }
+
+  return glMat;
+}
+
+/**
+ * Convert the image data in a canvas to a Mat
+ * The caller must ensure that the Mat is deleted
+ * @param canvas
+ * @returns {Mat}
+ */
+export function canvasToMat(canvas) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  // Deleted by caller
   return cv.matFromImageData(imageData);
 }
 
-export function generateChessboardPoints(count, width, height, gridSizeM = 0.03) {
+/**
+ * Generate a MatVector of chessboard points
+ * The caller must ensure that the MatVector and its contents are deleted
+ * @param count - how many chessboards-worth of points to generate
+ * @param columns - how many inner columns of corners the chessboard will have
+ * @param rows - how many inner rows of corners the chessboard will have
+ * @param gridSizeM - the size of each grid square in meters
+ * @returns {MatVector}
+ */
+export function generateChessboardPoints(count, columns, rows, gridSizeM = 0.03) {
   const pts = [];
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < columns; x += 1) {
       pts.push(x * gridSizeM);
       pts.push(y * gridSizeM);
       pts.push(0);
     }
   }
 
+  // Deleted by caller
   const objectPoints = new cv.MatVector();
   for (let i = 0; i < count; i += 1) {
-    objectPoints.push_back(cv.matFromArray(width * height, 3, cv.CV_32FC1, pts));
+    // Deleted by caller
+    objectPoints.push_back(cv.matFromArray(columns * rows, 3, cv.CV_32FC1, pts));
   }
 
   return objectPoints;
 }
 
+/**
+ * Find the chessboard corners in the current video frame
+ * @param video - the video element to find the corners in
+ * @param workCanvas - an optional canvas to use for working
+ */
 export function findChessboard(video, workCanvas) {
   if (video === null) {
     return undefined;
@@ -50,30 +88,42 @@ export function findChessboard(video, workCanvas) {
 
   videoToCanvas(video, canvas);
 
-  const frameMat = canvasToMat(canvas);
+  // Deleted after use below
+  let frameMat = canvasToMat(canvas);
   cv.cvtColor(frameMat, frameMat, cv.COLOR_BGR2GRAY, 0);
   const size = new cv.Size(9, 6);
 
-  const corners = new cv.Mat();
+  // Deleted after being converted to a regular JS array below
+  let cornersMat = new cv.Mat();
   cv.findChessboardCorners(
     frameMat,
     size,
-    corners,
+    cornersMat,
     // cv.CALIB_CB_FAST_CHECK,
     cv.CALIB_CB_NORMALIZE_IMAGE + cv.CALIB_CB_ADAPTIVE_THRESH,
   );
 
-  if (corners.rows === 0) {
+  if (cornersMat.rows === 0) {
     return undefined;
   }
 
   const winSize = new cv.Size(5, 5);
   const zeroZone = new cv.Size(-1, -1);
   const criteria = new cv.TermCriteria(cv.TERM_CRITERIA_EPS + cv.TermCriteria_COUNT, 40, 0.001);
-  cv.cornerSubPix(frameMat, corners, winSize, zeroZone, criteria);
+  cv.cornerSubPix(frameMat, cornersMat, winSize, zeroZone, criteria);
+  frameMat.delete(); frameMat = undefined;
 
-  // Free objects we don't need anymore
-  frameMat.delete();
+  // Convert corners to a regular JS array instead of passing it around and
+  // risking a memory leak
+  const corners = [];
+  for (let i = 0; i < cornersMat.rows; i += 1) {
+    corners.push([
+      cornersMat.data32F[i * 2],
+      cornersMat.data32F[i * 2 + 1],
+    ]);
+  }
+
+  cornersMat.delete(); cornersMat = undefined;
 
   return corners;
 }
@@ -84,28 +134,48 @@ function distance(x1, y1, x2, y2) {
 
 function deepDeleteMatVector(matVec) {
   for (let i = 0; i < matVec.size(); i += 1) {
+    // TODO: does this do anything? The documentation seems to imply that a new
+    //  object is created when `get` is called: https://docs.opencv.org/3.4/de/d06/tutorial_js_basic_ops.html
     matVec.get(i).delete();
   }
   matVec.delete();
 }
 
-export function calibrateCamera(imagePoints) {
-  const objectPointsVec = generateChessboardPoints(imagePoints.length, 9, 6);
+/**
+ * Calibrate the camera using the given image points, which should correspond to
+ * the inner points of a 6x9 chessboard
+ * @param imagePoints - An array of chessboard point arrays. Each chessboard
+ * array should contain 9x6 [x, y] points.
+ * @param rows - how many inner rows of corners the chessboard will have
+ * @param columns - how many inner columns of corners the chessboard will have
+ * @returns {{
+ *  fx: number, fy: number, cx: number, cy: number, distortionCoeffs: Float64Array, error: number
+ * }}
+ */
+export function calibrateCamera(imagePoints, rows = 9, columns = 6) {
+  // Deleted after use below
+  let objectPointsVec = generateChessboardPoints(imagePoints.length, columns, rows);
 
   // Convert the image points to a MatVector
-  const imagePointsVec = new cv.MatVector();
-  imagePoints.forEach((corners) => imagePointsVec.push_back(corners));
+  // Deleted after use below
+  let imagePointsVec = new cv.MatVector();
+  imagePoints.forEach((corners) => {
+    // Deleted after use below
+    const cornersMat = cv.matFromArray(rows * columns, 2, cv.CV_32FC2, corners);
+    imagePointsVec.push_back(cornersMat);
+  });
 
   // FIXME: track from camera video dimensions and validate at capture time
   const imageSize = new cv.Size(1280, 720);
 
-  const camMat = new cv.Mat();
-  const distCoeffs = new cv.Mat();
-  const rVecs = new cv.MatVector();
-  const tVecs = new cv.MatVector();
-  const stdDeviationsIntrinsics = new cv.Mat();
-  const stdDeviationsExtrinsics = new cv.Mat();
-  const perViewErrors = new cv.Mat();
+  // All deleted after use below
+  let camMat = new cv.Mat();
+  let distCoeffs = new cv.Mat();
+  let rVecs = new cv.MatVector();
+  let tVecs = new cv.MatVector();
+  let stdDeviationsIntrinsics = new cv.Mat();
+  let stdDeviationsExtrinsics = new cv.Mat();
+  let perViewErrors = new cv.Mat();
 
   cv.calibrateCameraExtended(
     objectPointsVec,
@@ -122,18 +192,23 @@ export function calibrateCamera(imagePoints) {
 
   let reprojectionError = 0;
   for (let i = 0; i < rVecs.size(); i += 1) {
-    const objPoints = objectPointsVec.get(i);
-    const rotVec = rVecs.get(i);
-    const transVec = tVecs.get(i);
+    // All deleted after use below
+    let objPoints = objectPointsVec.get(i);
+    let rotVec = rVecs.get(i);
+    let transVec = tVecs.get(i);
 
-    const ptsOutMat = new cv.Mat(objPoints.rows, 2, cv.CV_32F);
+    // Deleted after use below
+    let ptsOutMat = new cv.Mat(objPoints.rows, 2, cv.CV_32F);
     cv.projectPoints(objPoints, rotVec, transVec, camMat, distCoeffs, ptsOutMat);
+    rotVec.delete(); rotVec = undefined;
+    transVec.delete(); transVec = undefined;
 
     if (objPoints.rows !== ptsOutMat.rows) {
       throw new Error('objPoints.rows !== ptsOutMat.rows');
     }
 
-    const imgPoints = imagePointsVec.get(i);
+    // Deleted after use below
+    let imgPoints = imagePointsVec.get(i);
     for (let j = 0; j < objPoints.rows; j += 1) {
       const x1 = imgPoints.data32F[j * 2];
       const y1 = imgPoints.data32F[j * 2 + 1];
@@ -143,20 +218,21 @@ export function calibrateCamera(imagePoints) {
 
       reprojectionError += distance(x1, y1, x2, y2);
     }
-
-    ptsOutMat.delete();
+    objPoints.delete(); objPoints = undefined;
+    imgPoints.delete(); imgPoints = undefined;
+    ptsOutMat.delete(); ptsOutMat = undefined;
   }
 
   // Delete objects we don't need anymore
-  deepDeleteMatVector(imagePointsVec);
-  deepDeleteMatVector(objectPointsVec);
-  deepDeleteMatVector(rVecs);
-  deepDeleteMatVector(tVecs);
-  stdDeviationsIntrinsics.delete();
-  stdDeviationsExtrinsics.delete();
-  perViewErrors.delete();
+  deepDeleteMatVector(imagePointsVec); imagePointsVec = undefined;
+  deepDeleteMatVector(objectPointsVec); objectPointsVec = undefined;
+  deepDeleteMatVector(rVecs); rVecs = undefined;
+  deepDeleteMatVector(tVecs); tVecs = undefined;
+  stdDeviationsIntrinsics.delete(); stdDeviationsIntrinsics = undefined;
+  stdDeviationsExtrinsics.delete(); stdDeviationsExtrinsics = undefined;
+  perViewErrors.delete(); perViewErrors = undefined;
 
-  return {
+  const calibrationData = {
     fx: camMat.data64F[0],
     fy: camMat.data64F[4],
     cx: camMat.data64F[2],
@@ -164,18 +240,20 @@ export function calibrateCamera(imagePoints) {
     distortionCoeffs: distCoeffs.data64F,
     error: reprojectionError,
   };
+
+  camMat.delete(); camMat = undefined;
+  distCoeffs.delete(); distCoeffs = undefined;
+
+  return calibrationData;
 }
 
 export function applyHomography(homography, x, y) {
   // z is 1 bc these are homogeneous coordinates
-  const inPos = cv.matFromArray(3, 1, cv.CV_32F, [x, y, 1]);
-  const outPos = new cv.Mat();
-  cv.gemm(homography, inPos, 1.0, new cv.Mat(), 0.0, outPos, 0);
+  const inPos = vec3.fromValues(x, y, 1);
+  const outPos = vec3.create();
 
-  const [wx, wy, w] = outPos.data32F;
-
-  inPos.delete();
-  outPos.delete();
+  vec3.transformMat3(outPos, inPos, convertCvMatToMat3(homography.data32F));
+  const [wx, wy, w] = outPos;
 
   return [wx / w, wy / w];
 }
