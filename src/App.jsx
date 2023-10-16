@@ -15,27 +15,25 @@ const AppContainer = styled.div`
 function TabNavigator({ children }) {
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
-  const renderTabs = () => {
-    return children.map((child, index) => (
-      <button
-        key={index}
-        disabled={index === selectedTabIndex}
-        onClick={() => setSelectedTabIndex(index)}
-      >
-        {child.props.tabName}
-      </button>
-    ));
-  };
+  const renderTabs = () => children.map((child, index) => (
+    <button
+      type="button"
+      key={index}
+      disabled={index === selectedTabIndex}
+      onClick={() => setSelectedTabIndex(index)}
+    >
+      {child.props.tabName}
+    </button>
+  ));
 
-  const renderSelectedTabContent = () => {
-    return React.Children.map(children, (child, index) => {
+  const renderSelectedTabContent = () => React.Children
+    .map(children, (child, index) => {
       if (index === selectedTabIndex) {
         return <div key={index}>{child}</div>;
       }
 
       return null;
     });
-  };
 
   return (
     <div>
@@ -43,10 +41,10 @@ function TabNavigator({ children }) {
       <div>{renderSelectedTabContent()}</div>
     </div>
   );
-};
+}
 
 function Tab({ children }) {
-  return (<>{children}</>);
+  return children;
 }
 
 function App() {
