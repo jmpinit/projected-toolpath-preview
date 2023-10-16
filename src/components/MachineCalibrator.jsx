@@ -4,7 +4,7 @@ import styled from 'styled-components';
 
 import MachineJogControl from './MachineJogControl';
 import AnnotatedVideo from './AnnotatedVideo';
-import { applyHomography, findChessboard } from '../cv';
+import { applyHomography, findChessboard, swapOrder } from '../cv';
 import { chunk } from '../util';
 import MatrixTable from './MatrixTable';
 
@@ -53,6 +53,21 @@ function MachineCalibrator({
   const [chessboardPoints, setChessboardPoints] = useState();
   const [nextCornerIndex, setNextCornerIndex] = useState(0);
 
+  const transform = (() => {
+    if (cameraToCNC === undefined) {
+      return [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    }
+
+    let camToCNCMat = cv.matFromArray(3, 3, cv.CV_32F, cameraToCNC); // Deleted after use below
+    let cncToCam = new cv.Mat(); // Deleted after use in transforming points
+    cv.invert(camToCNCMat, cncToCam);
+    const t = cncToCam.data32F;
+    cncToCam.delete(); cncToCam = undefined;
+    camToCNCMat.delete(); camToCNCMat = undefined;
+
+    return swapOrder(t);
+  })();
+
   // TODO: we only need to rerender these things when they change, not every frame
   const handleUpdate = useCallback((video, canvas) => {
     if (videoEl === undefined) {
@@ -60,7 +75,9 @@ function MachineCalibrator({
     }
 
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (chessboardPoints !== undefined) {
       const gridCorners = chessboardOuterCorners(chessboardPoints, chessboardRows, chessboardCols);
@@ -104,7 +121,7 @@ function MachineCalibrator({
         [bedDimensions.widthMM, 0],
         [bedDimensions.widthMM, bedDimensions.heightMM],
         [0, bedDimensions.heightMM],
-      ].map(([x, y]) => applyHomography(cncToCam, x, y));
+      ];//.map(([x, y]) => applyHomography(cncToCam, x, y));
 
       ctx.strokeStyle = '#ff4444';
       ctx.lineWidth = 2;
@@ -125,7 +142,8 @@ function MachineCalibrator({
               const nx = x;
               return { x: nx, y: ny };
             })
-            .map(({ x, y }) => applyHomography(cncToCam, x, y)));
+            .map(({ x, y }) => [x, y]));
+            //.map(({ x, y }) => applyHomography(cncToCam, x, y)));
 
         ctx.strokeStyle = '#4444ff';
         ctx.lineWidth = 1;
@@ -137,7 +155,7 @@ function MachineCalibrator({
         });
       }
 
-      cncToCam.delete(); cncToCam = undefined;
+      // cncToCam.delete(); cncToCam = undefined;
     }
   }, [setVideoEl, chessboardPoints, cameraToCNC, nextCornerIndex]);
 
@@ -263,7 +281,7 @@ function MachineCalibrator({
   return (
     <Row>
       <Column>
-        <AnnotatedVideo onUpdate={handleUpdate} />
+        <AnnotatedVideo onUpdate={handleUpdate} transform={transform} />
       </Column>
       <Column>
         <MachineJogControl />

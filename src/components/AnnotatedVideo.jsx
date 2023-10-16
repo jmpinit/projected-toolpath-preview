@@ -3,12 +3,13 @@ import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import requestCamAccess from '../cam';
 import { useAnimationFrame } from '../hooks';
+import PerspectiveCanvas from './PerspectiveCanvas';
 
 const VideoContainer = styled.div`
   display: grid;
 `;
 
-const AbsCanvas = styled.canvas`
+const AbsCanvas = styled(PerspectiveCanvas)`
   grid-column: 1;
   grid-row: 1;
 `;
@@ -18,10 +19,11 @@ const AbsVideo = styled.video`
   grid-row: 1;
 `;
 
-export default function AnnotatedVideo({ onClick, onUpdate, showVideo }) {
+export default function AnnotatedVideo({ onClick, onUpdate, showVideo, transform }) {
   const videoRef = useRef();
   const canvasRef = useRef();
   const [hasCamAccess, setHasCamAccess] = useState(false);
+  const [renderTick, setRenderTick] = useState(0);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -50,12 +52,21 @@ export default function AnnotatedVideo({ onClick, onUpdate, showVideo }) {
     }
 
     onUpdate(videoRef.current, canvasRef.current);
-  }, [hasCamAccess, onUpdate]);
+
+    setRenderTick(renderTick + 1);
+  }, [hasCamAccess, onUpdate, setRenderTick, renderTick]);
 
   return (
     <VideoContainer onClick={onClick}>
       <AbsVideo ref={videoRef} hidden={showVideo} />
-      <AbsCanvas ref={canvasRef} />
+      <AbsCanvas
+        canvas={canvasRef.current}
+        width={canvasRef.current?.width}
+        height={canvasRef.current?.height}
+        renderTick={renderTick}
+        transform={transform}
+      />
+      <canvas ref={canvasRef} hidden />
     </VideoContainer>
   );
 }

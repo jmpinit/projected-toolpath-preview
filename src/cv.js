@@ -1,6 +1,6 @@
 import cvPromise from '@techstark/opencv-js';
-import { videoToCanvas } from './cam';
 import { mat3, vec3 } from 'gl-matrix';
+import { videoToCanvas } from './cam';
 
 (async () => {
   console.log('Loading OpenCV...');
@@ -8,21 +8,21 @@ import { mat3, vec3 } from 'gl-matrix';
   console.log('OpenCV loaded');
 })();
 
-export function convertCvMatToMat3(cvMatData) {
-  if (cvMatData.length !== 9) {
-    throw new Error('Input matrix must be of size 3x3.');
+export function swapOrder(mat) {
+  const size = Math.sqrt(mat.length);
+
+  if (size % 1 !== 0) {
+    throw new Error('Matrix must be square');
   }
 
-  // Creating a mat3 for glMatrix and filling it with data.
-  // Assumes column-major ordering used by glMatrix.
-  const glMat = mat3.create();
-  for (let col = 0; col < 3; col += 1) {
-    for (let row = 0; row < 3; row += 1) {
-      glMat[col * 3 + row] = cvMatData[row * 3 + col];
+  const swappedMat = mat3.create();
+  for (let col = 0; col < size; col += 1) {
+    for (let row = 0; row < size; row += 1) {
+      swappedMat[col * 3 + row] = mat[row * size + col];
     }
   }
 
-  return glMat;
+  return swappedMat;
 }
 
 /**
@@ -252,7 +252,7 @@ export function applyHomography(homography, x, y) {
   const inPos = vec3.fromValues(x, y, 1);
   const outPos = vec3.create();
 
-  vec3.transformMat3(outPos, inPos, convertCvMatToMat3(homography.data32F));
+  vec3.transformMat3(outPos, inPos, swapOrder(homography.data32F));
   const [wx, wy, w] = outPos;
 
   return [wx / w, wy / w];
