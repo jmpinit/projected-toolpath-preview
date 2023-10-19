@@ -54,7 +54,7 @@ function MachineJogControl({ machineConnected, feedRate, dispatch }) {
         return;
       }
 
-      if (moveInterval) {
+      if (currentMoveKey !== undefined) {
         // We're already moving
         return;
       }
@@ -88,6 +88,8 @@ function MachineJogControl({ machineConnected, feedRate, dispatch }) {
       const dist = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
       const feedRateMMPerSec = feedRate / 60;
       const millisToMove = (dist / feedRateMMPerSec) * 1000;
+
+      console.log('millisToMove', millisToMove)
 
       // Start moving continuously after a short delay
       // so that it's easier to hone in on a target with small movements
@@ -162,14 +164,14 @@ function MachineJogControl({ machineConnected, feedRate, dispatch }) {
     if (machineConnected) {
       dispatch({ type: 'CNC_DISCONNECT' });
     }
-  }, []);
+  }, [machineConnected]);
 
   // Disconnect on unmount
   useEffect(() => () => {
     if (machineConnected) {
       dispatch({ type: 'CNC_DISCONNECT' });
     }
-  }, []);
+  }, [machineConnected]);
 
   return (
     <VertContainer>

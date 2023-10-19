@@ -7,8 +7,9 @@ export default function FeedRateControl({ onChange, min, max }) {
   const handleInputChange = (event) => {
     const newFeedRate = parseInt(event.target.value, 10);
 
+    setFeedRate(newFeedRate);
+
     if (!Number.isNaN(newFeedRate) && newFeedRate >= min && newFeedRate <= max) {
-      setFeedRate(newFeedRate);
       onChange(newFeedRate);
     }
   };
@@ -18,7 +19,7 @@ export default function FeedRateControl({ onChange, min, max }) {
       <label>Feed Rate (mm/min):</label>
       <input
         type="number"
-        value={feedRate}
+        value={`${feedRate}`}
         onChange={handleInputChange}
         min={min}
         max={max}

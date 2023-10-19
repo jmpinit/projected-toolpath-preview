@@ -26,23 +26,29 @@ export default function createAxiDrawMiddleware() {
           }
           break;
         }
-        case 'CNC_CONNECT':
-          if (!axidraw.connected) {
+        case 'CNC_CONNECT': {
+          const { connected } = store.getState().cnc;
+
+          if (!connected) {
             const { feedRate } = store.getState().cnc;
 
             axidraw
               .connect()
-              .then(() => axidraw.setSpeed(feedRate))
+              .then(() => axidraw.setSpeed(feedRate / 60))
               .then(() => store.dispatch({ type: 'CNC_CONNECTED' }));
           }
           break;
-        case 'CNC_DISCONNECT':
-          if (axidraw.connected) {
+        }
+        case 'CNC_DISCONNECT': {
+          const { connected } = store.getState().cnc;
+
+          if (connected) {
             axidraw
               .disconnect()
               .then(() => store.dispatch({ type: 'CNC_DISCONNECTED' }));
           }
           break;
+        }
         case 'CNC_MOVETO': {
           const { x, y } = action.payload;
           axidraw

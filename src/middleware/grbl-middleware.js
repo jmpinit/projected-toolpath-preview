@@ -27,20 +27,26 @@ export default function createGrblMiddleware() {
           }
           break;
         }
-        case 'CNC_CONNECT':
-          if (!grbl.connected) {
+        case 'CNC_CONNECT': {
+          const { connected } = store.getState().cnc;
+
+          if (!connected) {
             grbl
               .connect()
               .then(() => store.dispatch({ type: 'CNC_CONNECTED' }));
           }
           break;
-        case 'CNC_DISCONNECT':
-          if (grbl.connected) {
+        }
+        case 'CNC_DISCONNECT': {
+          const { connected } = store.getState().cnc;
+
+          if (connected) {
             grbl
               .disconnect()
               .then(() => store.dispatch({ type: 'CNC_DISCONNECTED' }));
           }
           break;
+        }
         case 'CNC_MOVETO': {
           const { x, y } = action.payload;
 

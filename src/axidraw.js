@@ -115,7 +115,7 @@ export class AxiDraw {
       return;
     }
 
-    await this.ebb.disconnect();
+    await this.ebb.port.disconnect();
     this.connected = false;
   }
 

@@ -57,7 +57,7 @@ function PositionStatus({ interfaceType, lastCommandedPos, dispatch }) {
           />
         </div>
       ) : (
-        <span>{`X: ${x} Y: ${y}`}</span>
+        <span>{`X: ${reportedPosition.x} Y: ${reportedPosition.y}`}</span>
       )}
     </div>
   );

@@ -7,7 +7,7 @@ export default function appReducer(state, action) {
       connected: false,
       atHome: undefined,
       lastCommandedPos: { x: 0, y: 0 }, // { x, y }
-      feedRate: undefined, // mm/min
+      feedRate: 100, // mm/min
       toolpath: defaultToolpath,
     };
   }
@@ -44,7 +44,7 @@ export default function appReducer(state, action) {
         lastCommandedPos: { x, y },
       };
     }
-    case 'CNC_FEED_RATE_SET': {
+    case 'CNC_SET_FEED_RATE': {
       return {
         ...state,
         feedRate: action.payload,
