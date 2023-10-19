@@ -1,10 +1,11 @@
-import { AxiDraw } from '../axidraw';
+import { GrblController } from 'grbl-control';
 
-const INTERFACE_NAME = 'axidraw';
+const INTERFACE_NAME = 'grbl';
+const DEFAULT_FEED_RATE = 1000;
 
-export default function createAxiDrawMiddleware() {
+export default function createGrblMiddleware() {
   return (store) => {
-    const axidraw = new AxiDraw();
+    const grbl = new GrblController();
 
     return (next) => (action) => {
       // Only activate if this interface is selected
@@ -20,56 +21,52 @@ export default function createAxiDrawMiddleware() {
           const { connected } = store.getState().cnc;
 
           if (action.payload !== INTERFACE_NAME && connected) {
-            axidraw
+            grbl
               .disconnect()
               .then(() => store.dispatch({ type: 'CNC_DISCONNECTED' }));
           }
           break;
         }
         case 'CNC_CONNECT':
-          if (!axidraw.connected) {
-            const { feedRate } = store.getState().cnc;
-
-            axidraw
+          if (!grbl.connected) {
+            grbl
               .connect()
-              .then(() => axidraw.setSpeed(feedRate))
               .then(() => store.dispatch({ type: 'CNC_CONNECTED' }));
           }
           break;
         case 'CNC_DISCONNECT':
-          if (axidraw.connected) {
-            axidraw
+          if (grbl.connected) {
+            grbl
               .disconnect()
               .then(() => store.dispatch({ type: 'CNC_DISCONNECTED' }));
           }
           break;
         case 'CNC_MOVETO': {
           const { x, y } = action.payload;
-          axidraw
-            .moveTo(x, y)
+
+          const { feedRate: currentFeedRate } = store.getState().cnc;
+          const feedRate = currentFeedRate || DEFAULT_FEED_RATE;
+
+          grbl
+            .jog(`G21G90X${x.toFixed(3)}Y${y.toFixed(3)} F${feedRate.toFixed(3)}`)
             .then(() => store.dispatch({ type: 'CNC_MOVED', payload: { x, y } }));
           break;
         }
         case 'CNC_SET_FEED_RATE': {
           const feedRateMmPerMin = action.payload;
-          axidraw.setSpeed(feedRateMmPerMin / 60);
           store.dispatch({ type: 'CNC_FEED_RATE_SET', payload: feedRateMmPerMin });
           break;
         }
         case 'CNC_JOG': {
           const { x: dx, y: dy } = action.payload;
+          const { feedRate: currentFeedRate, lastCommandedPos } = store.getState().cnc;
+          const { x, y } = lastCommandedPos || { x: 0, y: 0 };
+          const feedRate = currentFeedRate || DEFAULT_FEED_RATE;
 
-          (async () => {
-            const pos = await axidraw.currentPosition();
+          grbl
+            .jog(`G21G91X${dx.toFixed(3)}Y${dy.toFixed(3)} F${feedRate.toFixed(3)}`)
+            .then(() => store.dispatch({ type: 'CNC_MOVED', payload: { x: x + dx, y: y + dy } }));
 
-            // Most machines will have the origin in the lower left of the bed,
-            // but the AxiDraw puts origin in the upper left
-            const x = pos.x + dx;
-            const y = pos.y - dy;
-            await axidraw.moveTo(x, y);
-
-            store.dispatch({ type: 'CNC_MOVED', payload: { x, y } });
-          })();
           break;
         }
         default:

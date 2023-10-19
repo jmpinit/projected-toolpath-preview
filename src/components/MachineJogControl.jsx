@@ -2,6 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import styled from 'styled-components';
+import FeedRateControl from './FeedRateControl';
 
 const VertContainer = styled.div`
   display: flex;
@@ -27,7 +28,7 @@ function dispatchJog(dispatch, x, y) {
   });
 }
 
-function MachineJogControl({ machineConnected, dispatch }) {
+function MachineJogControl({ machineConnected, feedRate, dispatch }) {
   const disabled = !machineConnected;
 
   const gotoHome = useCallback(() => dispatch({
@@ -42,6 +43,11 @@ function MachineJogControl({ machineConnected, dispatch }) {
     let moveInterval;
     let firstMoveTimeout;
     let currentMoveKey;
+
+    if (!machineConnected) {
+      // We can't jog if we're not connected
+      return () => {};
+    }
 
     function handleKeydown(event) {
       if (!machineConnected) {
@@ -79,10 +85,9 @@ function MachineJogControl({ machineConnected, dispatch }) {
           return;
       }
 
-      // FIXME: don't hardcode this here, read it from the state
-      const speed = 2000 / 60;
       const dist = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
-      const millisToMove = (dist / speed) * 1000;
+      const feedRateMMPerSec = feedRate / 60;
+      const millisToMove = (dist / feedRateMMPerSec) * 1000;
 
       // Start moving continuously after a short delay
       // so that it's easier to hone in on a target with small movements
@@ -98,8 +103,6 @@ function MachineJogControl({ machineConnected, dispatch }) {
     }
 
     function handleKeyup(event) {
-      console.log('keyup', event.key);
-
       if (currentMoveKey === undefined || event.key !== currentMoveKey) {
         return;
       }
@@ -124,42 +127,70 @@ function MachineJogControl({ machineConnected, dispatch }) {
       event.returnValue = '';
     }
 
-    if (machineConnected) {
-      document.addEventListener('keydown', handleKeydown);
-      document.addEventListener('keyup', handleKeyup);
-      window.addEventListener('beforeunload', handleUnload);
+    document.addEventListener('keydown', handleKeydown);
+    document.addEventListener('keyup', handleKeyup);
+    window.addEventListener('beforeunload', handleUnload);
 
-      return () => {
-        document.removeEventListener('keydown', handleKeydown);
-        document.removeEventListener('keyup', handleKeyup);
-        window.removeEventListener('beforeunload', handleUnload);
+    return () => {
+      document.removeEventListener('keydown', handleKeydown);
+      document.removeEventListener('keyup', handleKeyup);
+      window.removeEventListener('beforeunload', handleUnload);
 
-        if (moveInterval) {
-          clearInterval(moveInterval);
-        }
-      };
-    }
-  }, [machineConnected, dispatch]);
+      if (moveInterval) {
+        clearInterval(moveInterval);
+      }
+    };
+  }, [machineConnected, feedRate, dispatch]);
 
   const handleJogUp = useCallback(() => dispatchJog(dispatch, 0, 1), []);
   const handleJogDown = useCallback(() => dispatchJog(dispatch, 0, -1), []);
   const handleJogLeft = useCallback(() => dispatchJog(dispatch, -1, 0), []);
   const handleJogRight = useCallback(() => dispatchJog(dispatch, 1, 0), []);
 
+  const handleFeedRateChange = useCallback((newFeedRate) => dispatch({
+    type: 'CNC_SET_FEED_RATE',
+    payload: newFeedRate,
+  }), []);
+
   const handleConnect = useCallback(() => {
-    dispatch({ type: 'CNC_CONNECT' });
+    if (!machineConnected) {
+      dispatch({ type: 'CNC_CONNECT' });
+    }
+  }, []);
+
+  const handleDisconnect = useCallback(() => {
+    if (machineConnected) {
+      dispatch({ type: 'CNC_DISCONNECT' });
+    }
+  }, []);
+
+  // Disconnect on unmount
+  useEffect(() => () => {
+    if (machineConnected) {
+      dispatch({ type: 'CNC_DISCONNECT' });
+    }
   }, []);
 
   return (
     <VertContainer>
-      <button type="button" onClick={handleJogUp} disabled={disabled}>Up</button>
+      {machineConnected ? (
+        <button type="button" onClick={handleDisconnect}>Disconnect</button>
+      ) : (
+        <button type="button" onClick={handleConnect}>Connect</button>
+      )}
+      <button type="button" onClick={handleJogUp} disabled={disabled}>↑</button>
+      {/* TODO: make this look a little nicer */}
       <HorizContainer>
-        <StyledButton type="button" onClick={handleJogLeft} disabled={disabled}>Left</StyledButton>
-        <StyledButton type="button" onClick={handleJogRight} disabled={disabled}>Right</StyledButton>
+        <StyledButton type="button" onClick={handleJogLeft} disabled={disabled}>←</StyledButton>
+        <StyledButton type="button" onClick={handleJogRight} disabled={disabled}>→</StyledButton>
       </HorizContainer>
-      <button type="button" onClick={handleJogDown} disabled={disabled}>Down</button>
+      <button type="button" onClick={handleJogDown} disabled={disabled}>↓</button>
       <button type="button" onClick={gotoHome} disabled={disabled}>Go Home</button>
-      <button type="button" onClick={handleConnect} disabled={machineConnected}>Connect</button>
+      <div>
+        <p>Keyboard controls:</p>
+        <p>WASD or arrow keys</p>
+      </div>
+      <FeedRateControl onChange={handleFeedRateChange} />
     </VertContainer>
   );
 }
@@ -172,6 +203,7 @@ MachineJogControl.propTypes = {
 function mapStateToProps(state) {
   return {
     machineConnected: state.cnc.connected,
+    feedRate: state.cnc.feedRate,
   };
 }
 

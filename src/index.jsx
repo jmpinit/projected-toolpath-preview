@@ -6,11 +6,17 @@ import { applyMiddleware, createStore } from 'redux';
 
 import rootReducer from './reducers';
 import createAxiDrawMiddleware from './middleware/axidraw-middleware';
+import createBroadcastMiddleware from './middleware/broadcast-middleware';
+import createGrblMiddleware from './middleware/grbl-middleware';
 import App from './App';
 
 const store = createStore(
   rootReducer,
-  applyMiddleware(createAxiDrawMiddleware()),
+  applyMiddleware(
+    createBroadcastMiddleware(),
+    createGrblMiddleware(),
+    createAxiDrawMiddleware(),
+  ),
 );
 
 const GlobalStyle = createGlobalStyle`

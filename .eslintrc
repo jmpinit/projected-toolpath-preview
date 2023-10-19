@@ -8,7 +8,19 @@
   "extends": "airbnb",
   "rules": {
     "no-console": 0,
-    "object-curly-newline": 0
+    "object-curly-newline": 0,
+    "jsx-a11y/media-has-caption": 0,
+    "jsx-a11y/label-has-associated-control": [
+      "error",
+      {
+        "required": {
+          "some": [ "nesting", "id" ]
+        }
+      }
+    ],
+    // FIXME: these are meant to be warnings only while prototyping to make functional problems easier to spot
+    "react/prop-types": 1,
+    "no-unused-vars": 1
   },
   "plugins": [
     "jest"

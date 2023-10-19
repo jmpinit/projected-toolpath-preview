@@ -1,64 +1,43 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
-import { connect } from 'react-redux';
-import CameraCalibrator from './components/CameraCalibrator';
-import MachineCalibrator from './components/MachineCalibrator';
+import ControlPanel from './components/ControlPanel';
+import CameraUI from './components/CameraUI';
+import VideoContext from './components/VideoContext';
+import ProjectionUI from './components/ProjectionUI';
 
 const AppContainer = styled.div`
   display: flex;
+  flex-direction: row;
 `;
 
-const TabNavigator = ({ children }) => {
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+export default function App() {
+  const [projecting, setProjecting] = useState(false);
+  const videoRef = useRef(null);
+  const projectionCanvasRef = useRef(null);
 
-  const renderTabs = () => {
-    return children.map((child, index) => (
-      <button
-        key={index}
-        disabled={index === selectedTabIndex}
-        onClick={() => setSelectedTabIndex(index)}
-      >
-        {child.props.tabName}
-      </button>
-    ));
-  };
-
-  const renderSelectedTabContent = () => {
-    return React.Children.map(children, (child, index) => {
-      if (index === selectedTabIndex) {
-        return <div key={index}>{child}</div>;
+  useEffect(() => {
+    const handleFullscreen = (event) => {
+      if (event.key === 'f') {
+        setProjecting((prev) => !prev);
+        // projectionCanvasRef.current.requestFullscreen();
       }
+    };
 
-      return null;
-    });
-  };
+    window.addEventListener('keydown', handleFullscreen);
 
-  return (
-    <div>
-      <div>{renderTabs()}</div>
-      <div>{renderSelectedTabContent()}</div>
-    </div>
-  );
-};
+    return () => window.removeEventListener('keydown', handleFullscreen);
+  }, [projecting, setProjecting, projectionCanvasRef]);
 
-const Tab = ({ children }) => <>{children}</>;
-
-function App() {
   return (
     <AppContainer>
-      <TabNavigator>
-        <Tab tabName="Camera Calibration"><CameraCalibrator /></Tab>
-        <Tab tabName="Projector Calibration">TBD</Tab>
-        <Tab tabName="Machine Calibration"><MachineCalibrator /></Tab>
-      </TabNavigator>
+      {projecting ? (
+        <ProjectionUI ref={projectionCanvasRef} />
+      ) : (
+        <CameraUI ref={videoRef} />
+      )}
+      <VideoContext.Provider value={videoRef}>
+        <ControlPanel />
+      </VideoContext.Provider>
     </AppContainer>
   );
 }
-
-function mapStateToProps(state) {
-  return {
-    appMode: state.app.mode,
-  };
-}
-
-export default connect(mapStateToProps)(App);

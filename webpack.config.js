@@ -38,6 +38,10 @@ module.exports = {
         test: /\.css$/i,
         use: ['style-loader', 'css-loader'],
       },
+      {
+        test: /\.(nc|pegjs)$/i,
+        use: 'raw-loader',
+      },
     ],
   },
   plugins: [

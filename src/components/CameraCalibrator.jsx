@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { connect } from 'react-redux';
 import styled from 'styled-components';
 import AnnotatedVideo from './AnnotatedVideo';
 import { calibrateCamera, findChessboard } from '../cv';
@@ -9,7 +10,7 @@ const CalibrationContainer = styled.div`
   flex-direction: column;
 `;
 
-export default function CameraCalibrator() {
+function CameraCalibrator({ dispatch }) {
   const [imagePoints, setImagePoints] = useState([]);
   const [videoEl, setVideoEl] = useState();
   const [calibration, setCalibration] = useState();
@@ -21,6 +22,12 @@ export default function CameraCalibrator() {
 
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // FIXME: just for debugging
+    if (window.camImagePts !== undefined) {
+      ctx.fillStyle = 'green';
+      window.camImagePts.forEach(([x, y]) => ctx.fillRect(x - 5, y - 5, 10, 10));
+    }
 
     const allPoints = imagePoints.reduce((acc, corners) => [...acc, ...corners.data32F], []);
     const points = chunk(allPoints, 2);
@@ -45,6 +52,7 @@ export default function CameraCalibrator() {
   }, [videoEl, imagePoints, setImagePoints, setCalibration]);
 
   const calibrate = useCallback(() => {
+    // TODO: handle other chessboard sizes
     setCalibration(calibrateCamera(imagePoints));
   }, [imagePoints, setCalibration]);
 
@@ -53,11 +61,24 @@ export default function CameraCalibrator() {
     setCalibration(undefined);
   }, [setImagePoints, setCalibration]);
 
+  // HACK: for debugging / testing (this doesn't have to do with cam calibration,
+  // but we're putting it here for convenience)
+  const handleAnnotation = useCallback((event) => {
+    const rect = event.target.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    dispatch({
+      type: 'ANNOTATE',
+      payload: { x, y },
+    });
+  }, [dispatch]);
+
   return (
     <CalibrationContainer>
       <button type="button" onClick={captureCalibrationPoints}>Capture</button>
       <button type="button" onClick={calibrate}>Calibrate</button>
-      <AnnotatedVideo onUpdate={handleUpdate} />
+      <AnnotatedVideo onUpdate={handleUpdate} onClick={handleAnnotation} />
       <button type="button" onClick={clearCalibrationPoints}>Reset</button>
       {calibration !== undefined && (
         <>
@@ -91,3 +112,5 @@ export default function CameraCalibrator() {
     </CalibrationContainer>
   );
 }
+
+export default connect()(CameraCalibrator);

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import requestCamAccess from '../cam';
@@ -18,17 +18,31 @@ const AbsVideo = styled.video`
   grid-row: 1;
 `;
 
-export default function AnnotatedVideo({ onUpdate, showVideo }) {
-  const videoRef = useRef();
-  const canvasRef = useRef();
+const AnnotatedVideo = forwardRef(({
+  onClick,
+  onUpdate,
+  showVideo,
+  transform,
+  canvasRef: incomingCanvasRef,
+}, videoRef) => {
+  const canvasRef = incomingCanvasRef || useRef();
   const [hasCamAccess, setHasCamAccess] = useState(false);
 
+  // Initialize the camera access and once we have it, the canvas
   useEffect(() => {
     const video = videoRef.current;
 
     (async () => {
       await requestCamAccess(video);
       setHasCamAccess(true);
+
+      if (
+        canvasRef.current.width !== video.videoWidth
+        || canvasRef.current.height !== video.videoHeight
+      ) {
+        canvasRef.current.width = video.videoWidth;
+        canvasRef.current.height = video.videoHeight;
+      }
     })();
   }, []);
 
@@ -53,18 +67,27 @@ export default function AnnotatedVideo({ onUpdate, showVideo }) {
   }, [hasCamAccess, onUpdate]);
 
   return (
-    <VideoContainer>
+    <VideoContainer onClick={onClick}>
       <AbsVideo ref={videoRef} hidden={showVideo} />
-      <AbsCanvas ref={canvasRef} />
+      <AbsCanvas
+        ref={canvasRef}
+        width={canvasRef.current?.width}
+        height={canvasRef.current?.height}
+      />
     </VideoContainer>
   );
-}
+});
 
 AnnotatedVideo.propTypes = {
-  onUpdate: PropTypes.func.isRequired,
+  onClick: PropTypes.func,
+  onUpdate: PropTypes.func,
   showVideo: PropTypes.bool,
 };
 
 AnnotatedVideo.defaultProps = {
+  onClick: () => {},
+  onUpdate: () => {},
   showVideo: false,
 };
+
+export default AnnotatedVideo;

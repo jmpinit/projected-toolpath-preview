@@ -1,29 +1,20 @@
-export const MODE_UI = 'ui';
-export const MODE_PROJECTION = 'projection';
-
 export default function appReducer(state, action) {
   if (state === undefined) {
     return {
-      cvReady: false,
-      mode: MODE_UI,
+      mapping: true,
     };
   }
 
   switch (action.type) {
-    case 'CV_READY':
+    case 'APP_MAPPING_START':
       return {
         ...state,
-        cvReady: true,
+        mapping: true,
       };
-    case 'SET_UI_MODE':
+    case 'APP_MAPPING_STOP':
       return {
         ...state,
-        mode: MODE_UI,
-      };
-    case 'SET_PROJECTION_MODE':
-      return {
-        ...state,
-        mode: MODE_PROJECTION,
+        mapping: false,
       };
     default:
       return state;

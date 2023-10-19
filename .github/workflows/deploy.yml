@@ -25,6 +25,11 @@ jobs:
         run: npm install -g yarn
       - name: Install dependencies
         run: yarn install
+      - name: (HACK) directly run build script for grbl-control
+        working-directory: node_modules/grbl-control
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
       - name: Build website
         run: yarn build
       - name: Setup Pages

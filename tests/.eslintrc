@@ -1,4 +1,7 @@
 {
+  "parserOptions": {
+    "requireConfigFile": false
+  },
   "env": {
     "jest/globals": true
   }

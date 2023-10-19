@@ -1,5 +1,3 @@
-import { mat3 } from 'gl-matrix';
-
 export function chunk(arr, size) {
   const result = [];
   for (let i = 0; i < arr.length; i += size) {
@@ -8,15 +6,34 @@ export function chunk(arr, size) {
   return result;
 }
 
-export function openCVMatToGLMat(cvMat) {
-  if (cvMat.data64F.length !== 9) {
-    throw new Error('cvMat.data32F.length must be 9');
-  }
+/**
+ * Deeply update the values in an object based on another object. Only overwrite values that are
+ * defined in the update object.
+ * @param obj - The object to update
+ * @param update - The object containing the new values
+ */
+export function deepPartialUpdate(obj, update) {
+  return Object.keys(update).reduce((acc, key) => {
+    const value = update[key];
 
-  // gl-matrix uses column-major order
-  return mat3.fromValues(
-    cvMat.data64F[0], cvMat.data64F[3], cvMat.data64F[6],
-    cvMat.data64F[1], cvMat.data64F[4], cvMat.data64F[7],
-    cvMat.data64F[2], cvMat.data64F[5], cvMat.data64F[8],
-  );
+    if (value === undefined) {
+      return acc;
+    }
+
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      return {
+        ...acc,
+        [key]: deepPartialUpdate(acc[key], value),
+      };
+    }
+
+    return {
+      ...acc,
+      [key]: value,
+    };
+  }, obj);
+}
+
+export function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
