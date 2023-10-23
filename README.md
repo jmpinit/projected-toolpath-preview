@@ -2,6 +2,8 @@
 
 https://github.com/jmpinit/projected-toolpath-preview/assets/2086541/9d5e3b2f-8141-4f18-8909-69ea8f500971
 
+([Full demo video here](https://vimeo.com/876037161/8e5478f0e3))
+
 A web app to projection-map toolpaths onto CNC machine beds to preview jobs.
 
 [Use online here.](https://jmpinit.github.io/projected-toolpath-preview/)
