@@ -7,7 +7,6 @@ import MachineJogControl from './MachineJogControl';
 import PositionStatus from './PositionStatus';
 import JobUploadButton from './JobUploadButton';
 import MappingControls from './MappingControls';
-import MemoryUsage from './MemoryUsage';
 
 const ControlContainer = styled.div`
   display: flex;
@@ -33,7 +32,6 @@ function ControlPanel({ interfaceType, dispatch }) {
       <PositionStatus />
       <JobUploadButton />
       <MappingControls />
-      <MemoryUsage />
     </ControlContainer>
   );
 }
